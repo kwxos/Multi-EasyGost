@@ -1,40 +1,61 @@
-#!/sbin/openrc-run
+#!/bin/bash
 
-name="gost"
-description="GOST Proxy Service"
-command="/usr/bin/gost"
-command_args="-C /etc/gost/config.json"
-command_background=true
-pidfile="/var/run/gost.pid"
-
-depend() {
-    need net
-    after firewall
-}
+NAME="gost"
+DAEMON="/usr/bin/gost"
+CONFIG_FILE="/etc/gost/config.json"
+PIDFILE="/var/run/gost.pid"
 
 start() {
-    ebegin "Starting $name"
-    start-stop-daemon --start \
-        --exec $command \
-        --background \
-        --make-pidfile \
-        --pidfile $pidfile \
-        -- $command_args
-    eend $?
+    echo "Starting $NAME..."
+    start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON -- \
+        -C $CONFIG_FILE
+    echo "$NAME started."
 }
 
 stop() {
-    ebegin "Stopping $name"
-    start-stop-daemon --stop \
-        --exec $command \
-        --pidfile $pidfile
-    eend $?
+    echo "Stopping $NAME..."
+    # 查找 gost 进程的 PID
+    PID=$(pgrep -f "gost -C /etc/gost/config.json")
+    if [ -n "$PID" ]; then
+        # 发送 SIGTERM 信号停止进程
+        kill $PID
+        # 等待进程结束
+        while kill -0 $PID 2>/dev/null; do
+            sleep 1
+        done
+        echo "$NAME stopped."
+    else
+        echo "$NAME is not running."
+    fi
 }
 
 restart() {
-    ebegin "Restarting $name"
-    $0 stop
-    sleep 2
-    $0 start
-    eend $?
+    echo "Restarting $NAME..."
+    stop
+    start
 }
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        if pgrep -f "gost -C /etc/gost/config.json" > /dev/null; then
+            echo "$NAME is running."
+        else
+            echo "$NAME is not running."
+        fi
+        ;;
+    *)
+        echo "Usage: /etc/init.d/$NAME {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

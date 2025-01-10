@@ -6,14 +6,12 @@ CONFIG_FILE="/etc/gost/config.json"
 PIDFILE="/var/run/gost.pid"
 
 start() {
-    echo "Starting $NAME..."
     start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON -- \
         -C $CONFIG_FILE
     echo "$NAME started."
 }
 
 stop() {
-    echo "Stopping $NAME..."
     # 查找 gost 进程的 PID
     PID=$(pgrep -f "gost -C /etc/gost/config.json")
     if [ -n "$PID" ]; then
@@ -30,7 +28,6 @@ stop() {
 }
 
 restart() {
-    echo "Restarting $NAME..."
     stop
     start
 }

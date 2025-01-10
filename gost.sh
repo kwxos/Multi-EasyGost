@@ -18,13 +18,21 @@ function checknew() {
     Install_ct
     rm -rf /etc/gost
     mv /tmp/gost /etc/
-    systemctl restart gost
+    # 根据系统类型重启服务
+    if [[ $release == "alpine" ]]; then
+      rc-service gost restart
+    else
+      systemctl restart gost
+    fi
   else
     exit 0
   fi
 }
+
 function check_sys() {
-  if [[ -f /etc/redhat-release ]]; then
+  if [[ -f /etc/alpine-release ]]; then
+    release="alpine"
+  elif [[ -f /etc/redhat-release ]]; then
     release="centos"
   elif cat /etc/issue | grep -q -E -i "debian"; then
     release="debian"
@@ -47,15 +55,21 @@ function check_sys() {
     bit="amd64"
   fi
 }
+
 function Installation_dependency() {
-  gzip_ver=$(gzip -V)
+  gzip_ver=$(gzip -V 2>/dev/null)
   if [[ -z ${gzip_ver} ]]; then
     if [[ ${release} == "centos" ]]; then
       yum update
-      yum install -y gzip wget
+      yum install -y gzip wget curl
+    elif [[ ${release} == "alpine" ]]; then
+      apk update
+      apk add gzip wget curl openrc
+      openrc
+      touch /run/openrc/softlevel
     else
       apt-get update
-      apt-get install -y gzip wget
+      apt-get install -y gzip wget curl
     fi
   fi
 }
@@ -66,17 +80,35 @@ function check_new_ver() {
     ct_new_ver="2.11.2"
 }
 function check_file() {
-  if test ! -d "/usr/lib/systemd/system/"; then
-    mkdir /usr/lib/systemd/system
-    chmod -R 777 /usr/lib/systemd/system
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC，不需要 systemd 目录
+    if test ! -d "/etc/init.d/"; then
+      mkdir -p /etc/init.d
+      chmod -R 755 /etc/init.d
+    fi
+  else
+    # 其他系统（如 CentOS、Debian、Ubuntu）使用 systemd
+    if test ! -d "/usr/lib/systemd/system/"; then
+      mkdir -p /usr/lib/systemd/system
+      chmod -R 755 /usr/lib/systemd/system
+    fi
   fi
 }
+
 function check_nor_file() {
   rm -rf "$(pwd)"/gost
   rm -rf "$(pwd)"/gost.service
   rm -rf "$(pwd)"/config.json
   rm -rf /etc/gost
-  rm -rf /usr/lib/systemd/system/gost.service
+
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 删除 OpenRC 服务文件
+    rm -rf /etc/init.d/gost
+  else
+    # 其他系统删除 systemd 服务文件
+    rm -rf /usr/lib/systemd/system/gost.service
+  fi
+
   rm -rf /usr/bin/gost
 }
 function Install_ct() {
@@ -95,56 +127,123 @@ function Install_ct() {
     gunzip gost-linux-"$bit"-"$ct_new_ver".gz
     mv gost-linux-"$bit"-"$ct_new_ver" gost
     mv gost /usr/bin/gost
-    chmod -R 777 /usr/bin/gost
-    wget --no-check-certificate "$githubprx"https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/gost.service && chmod -R 777 gost.service && mv gost.service /usr/lib/systemd/system
-    mkdir /etc/gost && wget --no-check-certificate "$githubprx"https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/config.json && mv config.json /etc/gost && chmod -R 777 /etc/gost
+    chmod -R 755 /usr/bin/gost
+    if [[ $release == "alpine" ]]; then
+      # Alpine Linux 使用 OpenRC
+      wget --no-check-certificate "$githubprx"https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.openrc
+      chmod -R 755 gost.openrc
+      mv gost.openrc /etc/init.d/gost
+    else
+      # 其他系统使用 systemd
+      wget --no-check-certificate "$githubprx"https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.service
+      chmod -R 755 gost.service
+      mv gost.service /usr/lib/systemd/system
+    fi
+    mkdir /etc/gost
+    wget --no-check-certificate "$githubprx"https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/config.json
+    mv config.json /etc/gost
+    chmod -R 755 /etc/gost
   else
     rm -rf gost-linux-"$bit"-"$ct_new_ver".gz
     wget --no-check-certificate https://github.com/ginuerzh/gost/releases/download/v"$ct_new_ver"/gost-linux-"$bit"-"$ct_new_ver".gz
     gunzip gost-linux-"$bit"-"$ct_new_ver".gz
     mv gost-linux-"$bit"-"$ct_new_ver" gost
     mv gost /usr/bin/gost
-    chmod -R 777 /usr/bin/gost
-    wget --no-check-certificate https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/gost.service && chmod -R 777 gost.service && mv gost.service /usr/lib/systemd/system
-    mkdir /etc/gost && wget --no-check-certificate https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/config.json && mv config.json /etc/gost && chmod -R 777 /etc/gost
+    chmod -R 755 /usr/bin/gost
+    if [[ $release == "alpine" ]]; then
+      # Alpine Linux 使用 OpenRC
+      wget --no-check-certificate https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.openrc
+      chmod -R 755 gost.openrc
+      mv gost.openrc /etc/init.d/gost
+    else
+      # 其他系统使用 systemd
+      wget --no-check-certificate https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.service
+      chmod -R 755 gost.service
+      mv gost.service /usr/lib/systemd/system
+    fi
+    mkdir /etc/gost
+    wget --no-check-certificate https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/config.json
+    mv config.json /etc/gost
+    chmod -R 755 /etc/gost
   fi
 
-  systemctl enable gost && systemctl restart gost
-  echo "------------------------------"
-  if test -a /usr/bin/gost -a /usr/lib/systemctl/gost.service -a /etc/gost/config.json; then
-    echo "gost安装成功"
-    rm -rf "$(pwd)"/gost
-    rm -rf "$(pwd)"/gost.service
-    rm -rf "$(pwd)"/config.json
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC
+    rc-update add gost default
+    rc-service gost restart
   else
-    echo "gost没有安装成功"
-    rm -rf "$(pwd)"/gost
-    rm -rf "$(pwd)"/gost.service
-    rm -rf "$(pwd)"/config.json
-    rm -rf "$(pwd)"/gost.sh
+    # 其他系统使用 systemd
+    systemctl enable gost
+    systemctl restart gost
   fi
+
+  echo "------------------------------"
+  if [[ -f /usr/bin/gost && -f /etc/gost/config.json ]]; then
+    if [[ $release == "alpine" && -f /etc/init.d/gost ]]; then
+      echo "gost安装成功"
+    elif [[ $release != "alpine" && -f /usr/lib/systemd/system/gost.service ]]; then
+      echo "gost安装成功"
+    else
+      echo "gost安装失败：服务文件未找到"
+    fi
+  else
+    echo "gost安装失败：二进制文件或配置文件未找到"
+  fi
+
+  # 清理临时文件
+  rm -rf "$(pwd)"/gost
+  rm -rf "$(pwd)"/gost.service
+  rm -rf "$(pwd)"/gost.openrc
+  rm -rf "$(pwd)"/config.json
 }
 function Uninstall_ct() {
   rm -rf /usr/bin/gost
-  rm -rf /usr/lib/systemd/system/gost.service
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC
+    rm -rf /etc/init.d/gost
+  else
+    # 其他系统使用 systemd
+    rm -rf /usr/lib/systemd/system/gost.service
+  fi
   rm -rf /etc/gost
   rm -rf "$(pwd)"/gost.sh
   echo "gost已经成功删除"
 }
+
 function Start_ct() {
-  systemctl start gost
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC
+    rc-service gost start
+  else
+    # 其他系统使用 systemd
+    systemctl start gost
+  fi
   echo "已启动"
 }
+
 function Stop_ct() {
-  systemctl stop gost
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC
+    rc-service gost stop
+  else
+    # 其他系统使用 systemd
+    systemctl stop gost
+  fi
   echo "已停止"
 }
+
 function Restart_ct() {
   rm -rf /etc/gost/config.json
   confstart
   writeconf
   conflast
-  systemctl restart gost
+  if [[ $release == "alpine" ]]; then
+    # Alpine Linux 使用 OpenRC
+    rc-service gost restart
+  else
+    # 其他系统使用 systemd
+    systemctl restart gost
+  fi
   echo "已重读配置并重启"
 }
 function read_protocol() {
@@ -290,7 +389,7 @@ function read_d_ip() {
     echo -e "------------------------------------------------------------------"
     echo -e "请问你要将本机从${flag_b}接收到的流量转发向哪个IP或域名?"
     echo -e "注: IP既可以是[远程机器/当前机器]的公网IP, 也可是以本机本地回环IP(即127.0.0.1)"
-    echo -e "具体IP地址的填写, 取决于接收该流量的服务正在监听的IP(详见: https://github.com/KANIKIG/Multi-EasyGost)"
+    echo -e "具体IP地址的填写, 取决于接收该流量的服务正在监听的IP(详见: https://github.com/kwxos/Multi-EasyGost)"
     if [[ ${is_cert} == [Yy] ]]; then
       echo -e "注意: 落地机开启自定义tls证书，务必填写${Red_font_prefix}域名${Font_color_suffix}"
     fi
@@ -471,6 +570,8 @@ function cert() {
     check_sys
     if [[ ${release} == "centos" ]]; then
       yum install -y socat
+    elif [[ ${release} == "alpine" ]]; then
+      apk add socat
     else
       apt-get install -y socat
     fi
@@ -845,19 +946,37 @@ cron_restart() {
     if [ "$numcrontype" == "1" ]; then
       echo -e "-----------------------------------"
       read -p "每？小时重启: " cronhr
-      echo "0 0 */$cronhr * * ? * systemctl restart gost" >>/etc/crontab
+      if [[ $release == "alpine" ]]; then
+        # Alpine Linux 使用 OpenRC
+        echo "0 */$cronhr * * * /etc/init.d/gost restart" >>/etc/crontabs/root
+      else
+        # 其他系统使用 systemd
+        echo "0 */$cronhr * * * systemctl restart gost" >>/etc/crontab
+      fi
       echo -e "定时重启设置成功！"
     elif [ "$numcrontype" == "2" ]; then
       echo -e "-----------------------------------"
       read -p "每日？点重启: " cronhr
-      echo "0 0 $cronhr * * ? systemctl restart gost" >>/etc/crontab
+      if [[ $release == "alpine" ]]; then
+        # Alpine Linux 使用 OpenRC
+        echo "0 $cronhr * * * /etc/init.d/gost restart" >>/etc/crontabs/root
+      else
+        # 其他系统使用 systemd
+        echo "0 $cronhr * * * systemctl restart gost" >>/etc/crontab
+      fi
       echo -e "定时重启设置成功！"
     else
       echo "type error, please try again"
       exit
     fi
   elif [ "$numcron" == "2" ]; then
-    sed -i "/gost/d" /etc/crontab
+    if [[ $release == "alpine" ]]; then
+      # Alpine Linux 使用 OpenRC
+      sed -i "/gost/d" /etc/crontabs/root
+    else
+      # 其他系统使用 systemd
+      sed -i "/gost/d" /etc/crontab
+    fi
     echo -e "定时重启任务删除完成！"
   else
     echo "type error, please try again"
@@ -866,14 +985,16 @@ cron_restart() {
 }
 
 update_sh() {
-  ol_version=$(curl -L -s --connect-timeout 5 "$githubprx"https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/gost.sh | grep "shell_version=" | head -1 | awk -F '=|"' '{print $3}')
+  check_sys
+  Installation_dependency
+  ol_version=$(curl -L -s --connect-timeout 5 "$githubprx"https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.sh | grep "shell_version=" | head -1 | awk -F '=|"' '{print $3}')
   if [ -n "$ol_version" ]; then
     if [[ "$shell_version" != "$ol_version" ]]; then
       echo -e "存在新版本，是否更新 [Y/N]?"
       read -r update_confirm
       case $update_confirm in
       [yY][eE][sS] | [yY])
-        wget -N --no-check-certificate "$githubprx"https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/gost.sh
+        wget -N --no-check-certificate "$githubprx"https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.sh
         echo -e "更新完成"
         exit 0
         ;;
@@ -895,7 +1016,7 @@ echo && echo -e "                 gost 一键安装配置脚本"${Red_font_prefi
         (2)能够在不借助其他工具(如screen)的情况下实现多条转发规则同时生效
         (3)机器reboot后转发不失效
   功能: (1)tcp+udp不加密转发, (2)中转机加密转发, (3)落地机解密对接转发
-  帮助文档：https://github.moeyy.xyz/https://github.com/KANIKIG/Multi-EasyGost
+  帮助文档：https://github.moeyy.xyz/https://github.com/kwxos/Multi-EasyGost
 
  ${Green_font_prefix}1.${Font_color_suffix} 安装 gost
  ${Green_font_prefix}2.${Font_color_suffix} 更新 gost

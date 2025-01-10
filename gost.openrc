@@ -1,0 +1,40 @@
+#!/sbin/openrc-run
+
+name="gost"
+description="GOST Proxy Service"
+command="/usr/bin/gost"
+command_args="-C /etc/gost/config.json"
+command_background=true
+pidfile="/var/run/gost.pid"
+
+depend() {
+    need net
+    after firewall
+}
+
+start() {
+    ebegin "Starting $name"
+    start-stop-daemon --start \
+        --exec $command \
+        --background \
+        --make-pidfile \
+        --pidfile $pidfile \
+        -- $command_args
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping $name"
+    start-stop-daemon --stop \
+        --exec $command \
+        --pidfile $pidfile
+    eend $?
+}
+
+restart() {
+    ebegin "Restarting $name"
+    $0 stop
+    sleep 2
+    $0 start
+    eend $?
+}

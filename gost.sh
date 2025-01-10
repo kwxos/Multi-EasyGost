@@ -1059,7 +1059,11 @@ case "$num" in
   confstart
   writeconf
   conflast
-  systemctl restart gost
+  if [[ ${release} == "alpine" ]]; then
+    rc-service gost restart
+  else
+    systemctl restart gost
+  fi
   echo -e "配置已生效，当前配置如下"
   echo -e "--------------------------------------------------------"
   show_all_conf
@@ -1076,7 +1080,11 @@ case "$num" in
     confstart
     writeconf
     conflast
-    systemctl restart gost
+    if [[ ${release} == "alpine" ]]; then
+      rc-service gost restart
+    else
+      systemctl restart gost
+    fi
     echo -e "配置已删除，服务已重启"
   else
     echo "请输入正确数字"

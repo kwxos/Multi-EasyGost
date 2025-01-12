@@ -1,4 +1,4 @@
-###适配alpine，解决国内网络问题
+### 适配alpine，解决国内网络问题
 
 # Multi-EasyGost一键脚本使用指南
 ***

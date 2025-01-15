@@ -16,7 +16,7 @@
 
 * 启动脚本
   ```
-  wget --no-check-certificate -O gost.sh https://raw.githubusercontent.com/KANIKIG/Multi-EasyGost/master/gost.sh && chmod +x gost.sh && ./gost.sh
+  wget --no-check-certificate -O gost.sh https://github.moeyy.xyz/https://raw.githubusercontent.com/kwxos/Multi-EasyGost/master/gost.sh && chmod +x gost.sh && ./gost.sh
   ```
 * 再次运行本脚本只需要输入`./gost.sh`回车即可  
 

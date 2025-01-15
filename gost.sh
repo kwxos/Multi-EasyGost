@@ -389,7 +389,7 @@ function read_d_ip() {
     echo -e "------------------------------------------------------------------"
     echo -e "请问你要将本机从${flag_b}接收到的流量转发向哪个IP或域名?"
     echo -e "注: IP既可以是[远程机器/当前机器]的公网IP, 也可是以本机本地回环IP(即127.0.0.1)"
-    echo -e "具体IP地址的填写, 取决于接收该流量的服务正在监听的IP(详见: https://github.com/kwxos/Multi-EasyGost)"
+    echo -e "具体IP地址的填写, 取决于接收该流量的服务正在监听的IP(详见: https://github.com/KANIKIG/Multi-EasyGost)"
     if [[ ${is_cert} == [Yy] ]]; then
       echo -e "注意: 落地机开启自定义tls证书，务必填写${Red_font_prefix}域名${Font_color_suffix}"
     fi
@@ -1016,7 +1016,7 @@ echo && echo -e "                 gost 一键安装配置脚本"${Red_font_prefi
         (2)能够在不借助其他工具(如screen)的情况下实现多条转发规则同时生效
         (3)机器reboot后转发不失效
   功能: (1)tcp+udp不加密转发, (2)中转机加密转发, (3)落地机解密对接转发
-  帮助文档：https://github.moeyy.xyz/https://github.com/kwxos/Multi-EasyGost
+  帮助文档：https://github.moeyy.xyz/https://github.com/KANIKIG/Multi-EasyGost/Multi-EasyGost
 
  ${Green_font_prefix}1.${Font_color_suffix} 安装 gost
  ${Green_font_prefix}2.${Font_color_suffix} 更新 gost
